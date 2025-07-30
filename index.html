@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel to DataRoster.js Converter</title>
+    <title>Excel班表轉換器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
@@ -14,117 +14,203 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background-image: url("https://images.unsplash.com/photo-1671010496251-22eab06e3292?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bW9udCUyMHNhaW50JTIwbWljaGVsfGVufDB8fDB8fHww");
+            background-size: 100% 100%;
             min-height: 100vh;
             padding: 20px;
         }
         
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 20px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
+        @keyframes backgroundShift {
+            0%, 100% { 
+                background-position: 0 0, 0 0, 25px 25px, 25px 25px, 0 0, 100px 200px, 200px 100px, 0 0; 
+            }
+            50% { 
+                background-position: 25px 25px, 25px 25px, 0 0, 0 0, 50px 50px, 300px 400px, 400px 300px, 0 0; 
+            }
         }
         
-        .header {
-            background: linear-gradient(135deg, #4f46e5, #7c3aed);
-            color: white;
-            padding: 30px;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border-radius: 25px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 25px 45px rgba(0, 0, 0, 0.1),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
+        }
+        
+        .main-content {
+            padding: 50px 40px;
+            margin: auto;
             text-align: center;
         }
         
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 700;
+        .title-section {
+            margin-bottom: 40px;
         }
         
-        .header p {
-            opacity: 0.9;
-            font-size: 1.1rem;
+        .title-section h1 {
+            font-size: 3rem;
+            font-weight: 800;
+            color: #274c77;
+            margin-bottom: 15px;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
         }
         
-        .content {
-            padding: 40px;
+        .title-section p {
+            font-size: 1.2rem;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            font-weight: 500;
         }
         
         .upload-section {
-            text-align: center;
             margin-bottom: 40px;
         }
         
         .file-input-wrapper {
             position: relative;
             display: inline-block;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
         }
         
         .file-input {
             position: absolute;
+            top: 0;
+            left: 0;
             opacity: 0;
             width: 100%;
             height: 100%;
             cursor: pointer;
+            z-index: 2;
         }
         
         .file-input-button {
             display: inline-flex;
             align-items: center;
-            gap: 12px;
-            padding: 16px 32px;
-            background: linear-gradient(135deg, #10b981, #059669);
+            gap: 15px;
+            padding: 20px 40px;
+            background: rgba(16, 185, 129, 0.7);
+            backdrop-filter: blur(10px);
             color: white;
-            border: none;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 15px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        .file-input-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+        
+        .file-input-button:hover::before {
+            left: 100%;
+        }
+        
+        .file-input-wrapper:hover .file-input-button {
+            transform: translateY(-3px);
+            background: rgba(16, 185, 129, 0.8);
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.3);
+        }
+        
+        .month-input {
+            margin: 25px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .month-input input {
+            padding: 15px 25px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            font-size: 1.1rem;
+            width: 220px;
+            text-align: center;
+            color: #333;
+            text-shadow: none;
+        }
+        
+        .month-input input::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+        
+        .month-input input:focus {
+            outline: none;
+            border-color: rgba(79, 70, 229, 0.5);
+            box-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        
+        .process-button {
+            padding: 15px 35px;
+            background: rgba(245, 158, 11, 0.7);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 1px solid rgba(245, 158, 11, 0.3);
             border-radius: 12px;
             font-size: 1.1rem;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+            position: relative;
+            overflow: hidden;
         }
         
-        .file-input-button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        .process-button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
         }
         
-        .month-input {
-            margin: 20px 0;
-        }
-        
-        .month-input input {
-            padding: 12px 20px;
-            border: 2px solid #e5e7eb;
-            border-radius: 8px;
-            font-size: 1rem;
-            width: 200px;
-            text-align: center;
-        }
-        
-        .month-input input:focus {
-            outline: none;
-            border-color: #4f46e5;
-            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
-        }
-        
-        .process-button {
-            padding: 14px 28px;
-            background: linear-gradient(135deg, #f59e0b, #d97706);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            margin-left: 20px;
+        .process-button:hover::before {
+            left: 100%;
         }
         
         .process-button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+            transform: translateY(-2px);
+            background: rgba(245, 158, 11, 0.8);
+            border-color: rgba(245, 158, 11, 0.5);
+            box-shadow: 0 8px 25px rgba(245, 158, 11, 0.3);
         }
         
         .process-button:disabled {
@@ -134,70 +220,41 @@
         }
         
         .status {
-            margin: 20px 0;
-            padding: 15px;
-            border-radius: 8px;
+            margin: 25px 0;
+            padding: 18px;
+            border-radius: 12px;
             font-weight: 500;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
         }
         
         .status.success {
-            background: #d1fae5;
-            color: #065f46;
-            border: 1px solid #a7f3d0;
+            background: rgba(16, 185, 129, 0.15);
+            color: #10b981;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         
         .status.error {
-            background: #fee2e2;
-            color: #991b1b;
-            border: 1px solid #fecaca;
+            background: rgba(239, 68, 68, 0.15);
+            color: #ef4444;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         
         .status.processing {
-            background: #dbeafe;
-            color: #1e40af;
-            border: 1px solid #93c5fd;
+            background: rgba(59, 130, 246, 0.15);
+            color: #3b82f6;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
         }
         
         .results {
-            margin-top: 30px;
+            margin-top: 40px;
         }
         
         .results h3 {
-            margin-bottom: 15px;
-            color: #374151;
-            font-size: 1.3rem;
-        }
-        
-        .code-output {
-            background: #1f2937;
-            color: #f9fafb;
-            padding: 25px;
-            border-radius: 12px;
-            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-            max-height: 500px;
-            overflow-y: auto;
-            position: relative;
-            border: 1px solid #374151;
-        }
-        
-        .copy-button {
-            position: absolute;
-            top: 15px;
-            right: 15px;
-            padding: 8px 16px;
-            background: #4f46e5;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .copy-button:hover {
-            background: #4338ca;
+            margin-bottom: 20px;
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.5rem;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
         .stats {
@@ -208,98 +265,140 @@
         }
         
         .stat-card {
-            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
-            padding: 20px;
-            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(15px);
+            padding: 25px;
+            border-radius: 15px;
             text-align: center;
-            border: 1px solid #e2e8f0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
         }
         
         .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-            color: #1e293b;
-            margin-bottom: 5px;
+            font-size: 2.5rem;
+            font-weight: 800;
+            color: white;
+            margin-bottom: 8px;
+            text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
         }
         
         .stat-label {
-            color: #64748b;
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 1rem;
+            font-weight: 500;
+            text-shadow: 0 1px 5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .code-output {
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(15px);
+            color: #f9fafb;
+            padding: 30px;
+            border-radius: 15px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
             font-size: 0.9rem;
+            line-height: 1.6;
+            max-height: 400px;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            background: rgba(79, 70, 229, 0.8);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
             font-weight: 500;
         }
         
-        .instructions {
-            background: #f8fafc;
-            padding: 25px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            border-left: 4px solid #4f46e5;
-        }
-        
-        .instructions h3 {
-            color: #1e293b;
-            margin-bottom: 15px;
-        }
-        
-        .instructions ol {
-            color: #475569;
-            line-height: 1.6;
-            padding-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 8px;
+        .copy-button:hover {
+            background: rgba(79, 70, 229, 1);
+            transform: scale(1.05);
         }
         
         .hidden {
             display: none;
         }
         
+        /* Scrollbar styling for webkit browsers */
+        .code-output::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        .code-output::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+        }
+        
+        .code-output::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 4px;
+        }
+        
+        .code-output::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+        
         @media (max-width: 768px) {
-            .header h1 {
-                font-size: 2rem;
+            .title-section h1 {
+                font-size: 2.2rem;
             }
             
-            .content {
-                padding: 20px;
+            .main-content {
+                padding: 30px 20px;
+            }
+            
+            .month-input {
+                flex-direction: column;
+                gap: 15px;
             }
             
             .stats {
                 grid-template-columns: 1fr;
+            }
+            
+            .file-input-button {
+                padding: 18px 30px;
+                font-size: 1.1rem;
             }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>📊 Excel to DataRoster.js Converter</h1>
-            <p>Convert your monthly roster Excel files to DataRoster.js format instantly</p>
-        </div>
-        
-        <div class="content">
-            <div class="instructions">
-                <h3>📋 How to Use:</h3>
-                <ol>
-                    <li>Select your Excel roster file (.xlsx format)</li>
-                    <li>Enter the month (e.g., "2025年08月")</li>
-                    <li>Click "Process File" to convert</li>
-                    <li>Copy the generated JavaScript code</li>
-                    <li>Add it to your DataRoster.js file</li>
-                </ol>
+        <div class="main-content">
+            <div class="title-section">
+                <h1>📊 Excel班表轉換器</h1>
+                <p>謝謝美菁姐才能將班表變成我需要的資料格式!</p>
             </div>
             
             <div class="upload-section">
                 <div class="file-input-wrapper">
                     <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
                     <button class="file-input-button">
-                        📁 Choose Excel File
+                        📁 挑選班表檔案
                     </button>
                 </div>
                 
                 <div class="month-input">
                     <input type="text" id="monthInput" placeholder="2025年08月" value="2025年08月" />
-                    <button id="processButton" class="process-button" disabled>Process File</button>
+                    <button id="processButton" class="process-button" disabled>轉換</button>
                 </div>
             </div>
             
@@ -309,19 +408,19 @@
                 <div class="stats">
                     <div class="stat-card">
                         <div class="stat-number" id="employeeCount">0</div>
-                        <div class="stat-label">Employees Processed</div>
+                        <div class="stat-label">組員的班</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="dutyCount">0</div>
-                        <div class="stat-label">Total Duties Extracted</div>
+                        <div class="stat-label">所有分析完的任務</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="completionRate">0%</div>
-                        <div class="stat-label">Data Completeness</div>
+                        <div class="stat-label">資料完整度</div>
                     </div>
                 </div>
                 
-                <h3>Generated DataRoster.js Code:</h3>
+                <h3>產生的code:</h3>
                 <div class="code-output">
                     <button class="copy-button" onclick="copyToClipboard()">📋 Copy</button>
                     <pre id="codeOutput"></pre>
@@ -375,23 +474,19 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    // Get the first sheet
-                    const sheetName = workbook.SheetNames[0];
-                    const worksheet = workbook.Sheets[sheetName];
+                    let worksheet;
+                    if (workbook.Sheets['班表輸入']) {
+                        worksheet = workbook.Sheets['班表輸入'];
+                    } else {
+                        const sheetName = workbook.SheetNames[0];
+                        worksheet = workbook.Sheets[sheetName];
+                    }
                     
-                    // Convert to JSON
-                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
-                        header: 1,
-                        defval: '',
-                        raw: false
-                    });
-                    
-                    // Process the data
-                    const result = convertToDataRoster(jsonData, month);
+                    const result = convertToDataRoster(worksheet, month);
                     
                     if (result.success) {
                         displayResults(result.data);
-                        showStatus(`Successfully processed ${result.data.crew_schedules.length} employees`, 'success');
+                        showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班`, 'success');
                     } else {
                         showStatus(`Error: ${result.error}`, 'error');
                     }
@@ -404,78 +499,98 @@
             reader.readAsArrayBuffer(file);
         }
         
-        function convertToDataRoster(jsonData, month) {
+        function convertToDataRoster(worksheet, month) {
             try {
                 const employees = [];
                 let totalDuties = 0;
                 let completeEmployees = 0;
                 
-                // Find the header row (contains employee IDs)
-                let headerRowIndex = -1;
-                for (let i = 0; i < Math.min(10, jsonData.length); i++) {
-                    const row = jsonData[i];
-                    if (row && row[0] && /^\d{5}$/.test(row[0].toString())) {
-                        headerRowIndex = i;
-                        break;
-                    }
-                }
+                console.log('Processing Excel worksheet...');
                 
-                if (headerRowIndex === -1) {
-                    return { success: false, error: 'Could not find employee data rows' };
-                }
+                const range = XLSX.utils.decode_range(worksheet['!ref']);
+                console.log(`Worksheet range: ${worksheet['!ref']}`);
                 
-                // Process each employee row
-                for (let i = headerRowIndex; i < jsonData.length; i++) {
-                    const row = jsonData[i];
-                    if (!row || !row[0]) continue;
+                for (let row = 0; row <= range.e.r; row++) {
+                    const empCellAddr = XLSX.utils.encode_cell({r: row, c: 5});
+                    const empCell = worksheet[empCellAddr];
                     
-                    const employeeID = row[0].toString();
-                    
-                    // Check if this is a valid employee ID (5 digits)
-                    if (!/^\d{5}$/.test(employeeID)) continue;
-                    
-                    // Extract duties from columns 1-31 (days of month)
-                    const duties = [];
-                    for (let day = 1; day <= 31; day++) {
-                        const duty = row[day] ? row[day].toString().trim() : '';
-                        duties.push(duty);
-                        if (duty) totalDuties++;
-                    }
-                    
-                    // Check if this employee has substantial duty data
-                    const nonEmptyDuties = duties.filter(d => d !== '').length;
-                    if (nonEmptyDuties > 5) { // Only include employees with some duty data
-                        employees.push({
-                            employeeID: employeeID,
-                            duties: duties
-                        });
+                    if (empCell && empCell.v && /^\d{5}$/.test(empCell.v.toString().trim())) {
+                        const employeeID = empCell.v.toString().trim();
                         
-                        if (nonEmptyDuties >= 25) completeEmployees++;
+                        const nameCellAddr = XLSX.utils.encode_cell({r: row, c: 6});
+                        const nameCell = worksheet[nameCellAddr];
+                        const employeeName = nameCell && nameCell.v ? nameCell.v.toString().trim() : '';
+                        
+                        console.log(`Found employee ID ${employeeID} (${employeeName}) at row ${row + 1}`);
+                        
+                        const duties = [];
+                        for (let day = 0; day < 31; day++) {
+                            const dutyCol = 7 + day;
+                            const dutyCellAddr = XLSX.utils.encode_cell({r: row, c: dutyCol});
+                            const dutyCell = worksheet[dutyCellAddr];
+                            const duty = dutyCell && dutyCell.v ? dutyCell.v.toString().trim() : '';
+                            duties.push(duty);
+                            if (duty) totalDuties++;
+                        }
+                        
+                        const nonEmptyDuties = duties.filter(d => d !== '').length;
+                        console.log(`Employee ${employeeID}: ${nonEmptyDuties} duties found`);
+                        console.log(`Sample duties: [${duties.slice(0, 10).join(', ')}]`);
+                        
+                        if (nonEmptyDuties > 0) {
+                            employees.push({
+                                employeeID: employeeID,
+                                employeeName: employeeName,
+                                duties: duties
+                            });
+                            
+                            if (nonEmptyDuties >= 15) completeEmployees++;
+                        }
                     }
                 }
+                
+                console.log(`Found ${employees.length} employees total`);
                 
                 if (employees.length === 0) {
-                    return { success: false, error: 'No employee data found' };
+                    return { 
+                        success: false, 
+                        error: 'No employee data found. Please ensure the Excel file contains employee IDs in column F and duty data in columns H onwards.' 
+                    };
                 }
                 
-                const completionRate = Math.round((completeEmployees / employees.length) * 100);
+                const uniqueEmployees = [];
+                const seenIDs = new Set();
+                
+                employees.forEach(emp => {
+                    if (!seenIDs.has(emp.employeeID)) {
+                        seenIDs.add(emp.employeeID);
+                        uniqueEmployees.push({
+                            employeeID: emp.employeeID,
+                            duties: emp.duties
+                        });
+                    }
+                });
+                
+                const completionRate = uniqueEmployees.length > 0 ? 
+                    Math.round((completeEmployees / uniqueEmployees.length) * 100) : 0;
                 
                 const result = {
                     month: month,
-                    crew_schedules: employees
+                    crew_schedules: uniqueEmployees
                 };
                 
                 return {
                     success: true,
                     data: result,
                     stats: {
-                        employeeCount: employees.length,
+                        employeeCount: uniqueEmployees.length,
                         totalDuties: totalDuties,
                         completionRate: completionRate
                     }
                 };
                 
             } catch (error) {
+                console.error('Error in convertToDataRoster:', error);
                 return { success: false, error: error.message };
             }
         }
@@ -483,14 +598,13 @@
         function displayResults(data) {
             document.getElementById('results').classList.remove('hidden');
             
-            // Update stats
             const stats = {
                 employeeCount: data.crew_schedules.length,
                 totalDuties: data.crew_schedules.reduce((sum, emp) => 
                     sum + emp.duties.filter(d => d !== '').length, 0),
                 completionRate: Math.round(
                     (data.crew_schedules.filter(emp => 
-                        emp.duties.filter(d => d !== '').length >= 25
+                        emp.duties.filter(d => d !== '').length >= 15
                     ).length / data.crew_schedules.length) * 100
                 )
             };
@@ -499,7 +613,6 @@
             document.getElementById('dutyCount').textContent = stats.totalDuties;
             document.getElementById('completionRate').textContent = stats.completionRate + '%';
             
-            // Generate the JavaScript code
             const jsCode = generateJavaScriptCode(data);
             document.getElementById('codeOutput').textContent = jsCode;
             processedData = jsCode;
@@ -537,18 +650,17 @@
                 const button = document.querySelector('.copy-button');
                 const originalText = button.textContent;
                 button.textContent = '✅ Copied!';
-                button.style.background = '#10b981';
+                button.style.background = 'rgba(16, 185, 129, 0.8)';
                 
                 setTimeout(() => {
                     button.textContent = originalText;
-                    button.style.background = '#4f46e5';
+                    button.style.background = 'rgba(79, 70, 229, 0.8)';
                 }, 2000);
             }).catch(function(err) {
                 alert('Could not copy to clipboard. Please select and copy manually.');
             });
         }
         
-        // Auto-generate month based on current date
         const now = new Date();
         const year = now.getFullYear();
         const month = (now.getMonth() + 1).toString().padStart(2, '0');
