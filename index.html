@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel to DataRoster.js Converter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #4f46e5, #7c3aed);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1rem;
+        }
+        
+        .content {
+            padding: 40px;
+        }
+        
+        .upload-section {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        
+        .file-input {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+        
+        .file-input-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 32px;
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+        
+        .file-input-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+        
+        .month-input {
+            margin: 20px 0;
+        }
+        
+        .month-input input {
+            padding: 12px 20px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 1rem;
+            width: 200px;
+            text-align: center;
+        }
+        
+        .month-input input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+        
+        .process-button {
+            padding: 14px 28px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-left: 20px;
+        }
+        
+        .process-button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3);
+        }
+        
+        .process-button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+        
+        .status.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #a7f3d0;
+        }
+        
+        .status.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fecaca;
+        }
+        
+        .status.processing {
+            background: #dbeafe;
+            color: #1e40af;
+            border: 1px solid #93c5fd;
+        }
+        
+        .results {
+            margin-top: 30px;
+        }
+        
+        .results h3 {
+            margin-bottom: 15px;
+            color: #374151;
+            font-size: 1.3rem;
+        }
+        
+        .code-output {
+            background: #1f2937;
+            color: #f9fafb;
+            padding: 25px;
+            border-radius: 12px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+            border: 1px solid #374151;
+        }
+        
+        .copy-button {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 8px 16px;
+            background: #4f46e5;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .copy-button:hover {
+            background: #4338ca;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .stat-number {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin-bottom: 5px;
+        }
+        
+        .stat-label {
+            color: #64748b;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .instructions {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            margin-bottom: 30px;
+            border-left: 4px solid #4f46e5;
+        }
+        
+        .instructions h3 {
+            color: #1e293b;
+            margin-bottom: 15px;
+        }
+        
+        .instructions ol {
+            color: #475569;
+            line-height: 1.6;
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+            
+            .stats {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Excel to DataRoster.js Converter</h1>
+            <p>Convert your monthly roster Excel files to DataRoster.js format instantly</p>
+        </div>
+        
+        <div class="content">
+            <div class="instructions">
+                <h3>📋 How to Use:</h3>
+                <ol>
+                    <li>Select your Excel roster file (.xlsx format)</li>
+                    <li>Enter the month (e.g., "2025年08月")</li>
+                    <li>Click "Process File" to convert</li>
+                    <li>Copy the generated JavaScript code</li>
+                    <li>Add it to your DataRoster.js file</li>
+                </ol>
+            </div>
+            
+            <div class="upload-section">
+                <div class="file-input-wrapper">
+                    <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
+                    <button class="file-input-button">
+                        📁 Choose Excel File
+                    </button>
+                </div>
+                
+                <div class="month-input">
+                    <input type="text" id="monthInput" placeholder="2025年08月" value="2025年08月" />
+                    <button id="processButton" class="process-button" disabled>Process File</button>
+                </div>
+            </div>
+            
+            <div id="status" class="status hidden"></div>
+            
+            <div id="results" class="results hidden">
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="employeeCount">0</div>
+                        <div class="stat-label">Employees Processed</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="dutyCount">0</div>
+                        <div class="stat-label">Total Duties Extracted</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="completionRate">0%</div>
+                        <div class="stat-label">Data Completeness</div>
+                    </div>
+                </div>
+                
+                <h3>Generated DataRoster.js Code:</h3>
+                <div class="code-output">
+                    <button class="copy-button" onclick="copyToClipboard()">📋 Copy</button>
+                    <pre id="codeOutput"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let processedData = null;
+        
+        document.getElementById('fileInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            document.getElementById('processButton').disabled = !file;
+            
+            if (file) {
+                showStatus(`File selected: ${file.name}`, 'success');
+            }
+        });
+        
+        document.getElementById('processButton').addEventListener('click', processFile);
+        
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${type}`;
+            statusDiv.classList.remove('hidden');
+        }
+        
+        function processFile() {
+            const fileInput = document.getElementById('fileInput');
+            const monthInput = document.getElementById('monthInput');
+            const file = fileInput.files[0];
+            const month = monthInput.value.trim();
+            
+            if (!file) {
+                showStatus('Please select a file first', 'error');
+                return;
+            }
+            
+            if (!month) {
+                showStatus('Please enter the month', 'error');
+                return;
+            }
+            
+            showStatus('Processing file...', 'processing');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Get the first sheet
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Convert to JSON
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet, { 
+                        header: 1,
+                        defval: '',
+                        raw: false
+                    });
+                    
+                    // Process the data
+                    const result = convertToDataRoster(jsonData, month);
+                    
+                    if (result.success) {
+                        displayResults(result.data);
+                        showStatus(`Successfully processed ${result.data.crew_schedules.length} employees`, 'success');
+                    } else {
+                        showStatus(`Error: ${result.error}`, 'error');
+                    }
+                    
+                } catch (error) {
+                    showStatus(`Error processing file: ${error.message}`, 'error');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
+        
+        function convertToDataRoster(jsonData, month) {
+            try {
+                const employees = [];
+                let totalDuties = 0;
+                let completeEmployees = 0;
+                
+                // Find the header row (contains employee IDs)
+                let headerRowIndex = -1;
+                for (let i = 0; i < Math.min(10, jsonData.length); i++) {
+                    const row = jsonData[i];
+                    if (row && row[0] && /^\d{5}$/.test(row[0].toString())) {
+                        headerRowIndex = i;
+                        break;
+                    }
+                }
+                
+                if (headerRowIndex === -1) {
+                    return { success: false, error: 'Could not find employee data rows' };
+                }
+                
+                // Process each employee row
+                for (let i = headerRowIndex; i < jsonData.length; i++) {
+                    const row = jsonData[i];
+                    if (!row || !row[0]) continue;
+                    
+                    const employeeID = row[0].toString();
+                    
+                    // Check if this is a valid employee ID (5 digits)
+                    if (!/^\d{5}$/.test(employeeID)) continue;
+                    
+                    // Extract duties from columns 1-31 (days of month)
+                    const duties = [];
+                    for (let day = 1; day <= 31; day++) {
+                        const duty = row[day] ? row[day].toString().trim() : '';
+                        duties.push(duty);
+                        if (duty) totalDuties++;
+                    }
+                    
+                    // Check if this employee has substantial duty data
+                    const nonEmptyDuties = duties.filter(d => d !== '').length;
+                    if (nonEmptyDuties > 5) { // Only include employees with some duty data
+                        employees.push({
+                            employeeID: employeeID,
+                            duties: duties
+                        });
+                        
+                        if (nonEmptyDuties >= 25) completeEmployees++;
+                    }
+                }
+                
+                if (employees.length === 0) {
+                    return { success: false, error: 'No employee data found' };
+                }
+                
+                const completionRate = Math.round((completeEmployees / employees.length) * 100);
+                
+                const result = {
+                    month: month,
+                    crew_schedules: employees
+                };
+                
+                return {
+                    success: true,
+                    data: result,
+                    stats: {
+                        employeeCount: employees.length,
+                        totalDuties: totalDuties,
+                        completionRate: completionRate
+                    }
+                };
+                
+            } catch (error) {
+                return { success: false, error: error.message };
+            }
+        }
+        
+        function displayResults(data) {
+            document.getElementById('results').classList.remove('hidden');
+            
+            // Update stats
+            const stats = {
+                employeeCount: data.crew_schedules.length,
+                totalDuties: data.crew_schedules.reduce((sum, emp) => 
+                    sum + emp.duties.filter(d => d !== '').length, 0),
+                completionRate: Math.round(
+                    (data.crew_schedules.filter(emp => 
+                        emp.duties.filter(d => d !== '').length >= 25
+                    ).length / data.crew_schedules.length) * 100
+                )
+            };
+            
+            document.getElementById('employeeCount').textContent = stats.employeeCount;
+            document.getElementById('dutyCount').textContent = stats.totalDuties;
+            document.getElementById('completionRate').textContent = stats.completionRate + '%';
+            
+            // Generate the JavaScript code
+            const jsCode = generateJavaScriptCode(data);
+            document.getElementById('codeOutput').textContent = jsCode;
+            processedData = jsCode;
+        }
+        
+        function generateJavaScriptCode(data) {
+            let code = `{\n\tmonth: "${data.month}",\n\tcrew_schedules: [\n`;
+            
+            data.crew_schedules.forEach((employee, index) => {
+                code += `\t\t{\n`;
+                code += `\t\t\temployeeID: "${employee.employeeID}",\n`;
+                code += `\t\t\tduties: [`;
+                
+                const duties = employee.duties.map(duty => `"${duty}"`).join(',');
+                code += duties;
+                
+                code += `]\n`;
+                code += `\t\t}`;
+                
+                if (index < data.crew_schedules.length - 1) {
+                    code += ',';
+                }
+                code += '\n';
+            });
+            
+            code += '\t]\n}';
+            
+            return code;
+        }
+        
+        function copyToClipboard() {
+            if (!processedData) return;
+            
+            navigator.clipboard.writeText(processedData).then(function() {
+                const button = document.querySelector('.copy-button');
+                const originalText = button.textContent;
+                button.textContent = '✅ Copied!';
+                button.style.background = '#10b981';
+                
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.style.background = '#4f46e5';
+                }, 2000);
+            }).catch(function(err) {
+                alert('Could not copy to clipboard. Please select and copy manually.');
+            });
+        }
+        
+        // Auto-generate month based on current date
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        document.getElementById('monthInput').value = `${year}年${month}月`;
+    </script>
+</body>
+</html>
