@@ -33,8 +33,8 @@
             max-width: 900px;
             margin: 0 auto;
             background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
             border-radius: 25px;
             border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 
@@ -56,7 +56,6 @@
         
         .main-content {
             padding: 50px 40px;
-            margin: auto;
             text-align: center;
         }
         
@@ -67,7 +66,7 @@
         .title-section h1 {
             font-size: 3rem;
             font-weight: 800;
-            color: #274c77;
+            color: blue;
             margin-bottom: 15px;
             text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
         }
@@ -151,28 +150,27 @@
             gap: 20px;
         }
         
-        .month-input input {
+        .month-display {
+            margin: 25px 0;
             padding: 15px 25px;
-            background: rgba(255, 255, 255, 0.7);
+            background: rgba(79, 70, 229, 0.2);
             backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(79, 70, 229, 0.3);
             border-radius: 12px;
             font-size: 1.1rem;
-            width: 220px;
             text-align: center;
-            color: #333;
-            text-shadow: none;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
         }
         
-        .month-input input::placeholder {
-            color: rgba(255, 255, 255, 0.6);
+        .month-label {
+            opacity: 0.8;
+            margin-right: 10px;
         }
         
-        .month-input input:focus {
-            outline: none;
-            border-color: rgba(79, 70, 229, 0.5);
-            box-shadow: 0 0 20px rgba(79, 70, 229, 0.3);
-            background: rgba(255, 255, 255, 0.8);
+        .detected-month {
+            font-weight: 600;
+            color: #fbbf24;
         }
         
         .process-button {
@@ -255,6 +253,7 @@
             color: rgba(255, 255, 255, 0.9);
             font-size: 1.5rem;
             text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            text-align: left;
         }
         
         .stats {
@@ -309,6 +308,9 @@
             position: relative;
             border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.3);
+            text-align: left;
+            white-space: pre-wrap;
+            word-wrap: break-word;
         }
         
         .copy-button {
@@ -397,7 +399,10 @@
                 </div>
                 
                 <div class="month-input">
-                    <input type="text" id="monthInput" placeholder="2025年08月" value="2025年08月" />
+                    <div id="monthDisplay" class="month-display hidden">
+                        <span class="month-label">檢測到的月份:</span>
+                        <span id="detectedMonth" class="detected-month"></span>
+                    </div>
                     <button id="processButton" class="process-button" disabled>轉換</button>
                 </div>
             </div>
@@ -431,17 +436,76 @@
 
     <script>
         let processedData = null;
+        let detectedMonth = null;
         
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
-            document.getElementById('processButton').disabled = !file;
             
             if (file) {
-                showStatus(`File selected: ${file.name}`, 'success');
+                showStatus(`檔案已選擇: ${file.name}，正在分析月份資訊...`, 'processing');
+                analyzeFileForMonth(file);
+            } else {
+                document.getElementById('processButton').disabled = true;
+                document.getElementById('monthDisplay').classList.add('hidden');
             }
         });
         
-        document.getElementById('processButton').addEventListener('click', processFile);
+        function analyzeFileForMonth(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    let worksheet;
+                    if (workbook.Sheets['班表輸入']) {
+                        worksheet = workbook.Sheets['班表輸入'];
+                    } else {
+                        const sheetName = workbook.SheetNames[0];
+                        worksheet = workbook.Sheets[sheetName];
+                    }
+                    
+                    // Extract month from E1 cell
+                    const e1Cell = worksheet['E1'];
+                    if (e1Cell && e1Cell.v) {
+                        const e1Value = e1Cell.v.toString();
+                        console.log('E1 content:', e1Value);
+                        
+                        // Extract year and month using regex
+                        const yearMatch = e1Value.match(/(\d{4})/);
+                        const monthMatch = e1Value.match(/(\d{1,2})月/);
+                        
+                        if (yearMatch && monthMatch) {
+                            detectedMonth = `${yearMatch[1]}年${monthMatch[1].padStart(2, '0')}月`;
+                            document.getElementById('detectedMonth').textContent = detectedMonth;
+                            document.getElementById('monthDisplay').classList.remove('hidden');
+                            document.getElementById('processButton').disabled = false;
+                            showStatus(`檔案分析完成！檢測到月份: ${detectedMonth}`, 'success');
+                        } else {
+                            // Fallback: try to extract from filename or use current date
+                            const now = new Date();
+                            const year = now.getFullYear();
+                            const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                            detectedMonth = `${year}年${month}月`;
+                            
+                            document.getElementById('detectedMonth').textContent = detectedMonth + ' (預設)';
+                            document.getElementById('monthDisplay').classList.remove('hidden');
+                            document.getElementById('processButton').disabled = false;
+                            showStatus(`無法從檔案中檢測月份，使用預設值: ${detectedMonth}`, 'success');
+                        }
+                    } else {
+                        throw new Error('無法讀取檔案中的月份資訊');
+                    }
+                    
+                } catch (error) {
+                    showStatus(`檔案分析失敗: ${error.message}`, 'error');
+                    document.getElementById('processButton').disabled = true;
+                    document.getElementById('monthDisplay').classList.add('hidden');
+                }
+            };
+            
+            reader.readAsArrayBuffer(file);
+        }
         
         function showStatus(message, type) {
             const statusDiv = document.getElementById('status');
@@ -450,23 +514,23 @@
             statusDiv.classList.remove('hidden');
         }
         
+        document.getElementById('processButton').addEventListener('click', processFile);
+        
         function processFile() {
             const fileInput = document.getElementById('fileInput');
-            const monthInput = document.getElementById('monthInput');
             const file = fileInput.files[0];
-            const month = monthInput.value.trim();
             
             if (!file) {
-                showStatus('Please select a file first', 'error');
+                showStatus('請先選擇檔案', 'error');
                 return;
             }
             
-            if (!month) {
-                showStatus('Please enter the month', 'error');
+            if (!detectedMonth) {
+                showStatus('請先分析檔案以檢測月份', 'error');
                 return;
             }
             
-            showStatus('Processing file...', 'processing');
+            showStatus('正在處理檔案...', 'processing');
             
             const reader = new FileReader();
             reader.onload = function(e) {
@@ -482,17 +546,17 @@
                         worksheet = workbook.Sheets[sheetName];
                     }
                     
-                    const result = convertToDataRoster(worksheet, month);
+                    const result = convertToDataRoster(worksheet, detectedMonth);
                     
                     if (result.success) {
                         displayResults(result.data);
-                        showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班`, 'success');
+                        showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班表`, 'success');
                     } else {
-                        showStatus(`Error: ${result.error}`, 'error');
+                        showStatus(`轉換失敗: ${result.error}`, 'error');
                     }
                     
                 } catch (error) {
-                    showStatus(`Error processing file: ${error.message}`, 'error');
+                    showStatus(`處理檔案時發生錯誤: ${error.message}`, 'error');
                 }
             };
             
@@ -523,14 +587,36 @@
                         
                         console.log(`Found employee ID ${employeeID} (${employeeName}) at row ${row + 1}`);
                         
+                        // Extract duties from current row and next row, combining with "/"
                         const duties = [];
                         for (let day = 0; day < 31; day++) {
                             const dutyCol = 7 + day;
-                            const dutyCellAddr = XLSX.utils.encode_cell({r: row, c: dutyCol});
-                            const dutyCell = worksheet[dutyCellAddr];
-                            const duty = dutyCell && dutyCell.v ? dutyCell.v.toString().trim() : '';
-                            duties.push(duty);
-                            if (duty) totalDuties++;
+                            
+                            // Get duty from main row
+                            const mainCellAddr = XLSX.utils.encode_cell({r: row, c: dutyCol});
+                            const mainCell = worksheet[mainCellAddr];
+                            const mainDuty = mainCell && mainCell.v ? mainCell.v.toString().trim() : '';
+                            
+                            // Get duty from next row (row + 1)
+                            const nextCellAddr = XLSX.utils.encode_cell({r: row + 1, c: dutyCol});
+                            const nextCell = worksheet[nextCellAddr];
+                            const nextDuty = nextCell && nextCell.v ? nextCell.v.toString().trim() : '';
+                            
+                            // Combine duties with "/" if both exist, otherwise use the one that exists
+                            let combinedDuty = '';
+                            if (mainDuty && nextDuty) {
+                                // Clean up any newlines in duties and combine
+                                const cleanMain = mainDuty.replace(/\n/g, ' ').trim();
+                                const cleanNext = nextDuty.replace(/\n/g, ' ').trim();
+                                combinedDuty = `${cleanMain}/${cleanNext}`;
+                            } else if (mainDuty) {
+                                combinedDuty = mainDuty.replace(/\n/g, ' ').trim();
+                            } else if (nextDuty) {
+                                combinedDuty = nextDuty.replace(/\n/g, ' ').trim();
+                            }
+                            
+                            duties.push(combinedDuty);
+                            if (combinedDuty) totalDuties++;
                         }
                         
                         const nonEmptyDuties = duties.filter(d => d !== '').length;
@@ -660,11 +746,7 @@
                 alert('Could not copy to clipboard. Please select and copy manually.');
             });
         }
-        
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        document.getElementById('monthInput').value = `${year}年${month}月`;
+
     </script>
 </body>
 </html>
