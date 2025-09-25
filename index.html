@@ -387,7 +387,7 @@
         <div class="main-content">
             <div class="title-section">
                 <h1>📊 Excel班表轉換器</h1>
-                <p>謝謝美菁姐才能將班表變成我需要的資料格式!</p>
+                <p>謝謝美蓮姐才能將班表變成我需要的資料格式!</p>
             </div>
             
             <div class="upload-section">
@@ -425,7 +425,7 @@
                     </div>
                 </div>
                 
-                <h3>產生的code:</h3>
+                <h3>產生的JSON:</h3>
                 <div class="code-output">
                     <button class="copy-button" onclick="copyToClipboard()">📋 Copy</button>
                     <pre id="codeOutput"></pre>
@@ -563,6 +563,25 @@
             reader.readAsArrayBuffer(file);
         }
         
+        function getDaysInMonth(monthStr) {
+            // Extract year and month from string like "2025年08月"
+            const yearMatch = monthStr.match(/(\d{4})年/);
+            const monthMatch = monthStr.match(/(\d{2})月/);
+            
+            if (!yearMatch || !monthMatch) {
+                console.warn('Could not parse month string, defaulting to 31 days');
+                return 31;
+            }
+            
+            const year = parseInt(yearMatch[1]);
+            const month = parseInt(monthMatch[1]);
+            
+            // JavaScript Date object: month is 0-indexed, so subtract 1
+            // Get the last day of the month by setting day to 0 of next month
+            const lastDay = new Date(year, month, 0).getDate();
+            return lastDay;
+        }
+        
         function convertToDataRoster(worksheet, month) {
             try {
                 const employees = [];
@@ -570,6 +589,10 @@
                 let completeEmployees = 0;
                 
                 console.log('Processing Excel worksheet...');
+                
+                // Get the number of days in the month
+                const daysInMonth = getDaysInMonth(month);
+                console.log(`Month: ${month}, Days in month: ${daysInMonth}`);
                 
                 const range = XLSX.utils.decode_range(worksheet['!ref']);
                 console.log(`Worksheet range: ${worksheet['!ref']}`);
@@ -589,7 +612,7 @@
                         
                         // Extract duties from current row and next row, combining with "/"
                         const duties = [];
-                        for (let day = 0; day < 31; day++) {
+                        for (let day = 0; day < daysInMonth; day++) {
                             const dutyCol = 7 + day;
                             
                             // Get duty from main row
@@ -620,7 +643,7 @@
                         }
                         
                         const nonEmptyDuties = duties.filter(d => d !== '').length;
-                        console.log(`Employee ${employeeID}: ${nonEmptyDuties} duties found`);
+                        console.log(`Employee ${employeeID}: ${nonEmptyDuties} duties found out of ${daysInMonth} days`);
                         console.log(`Sample duties: [${duties.slice(0, 10).join(', ')}]`);
                         
                         if (nonEmptyDuties > 0) {
@@ -699,34 +722,14 @@
             document.getElementById('dutyCount').textContent = stats.totalDuties;
             document.getElementById('completionRate').textContent = stats.completionRate + '%';
             
-            const jsCode = generateJavaScriptCode(data);
-            document.getElementById('codeOutput').textContent = jsCode;
-            processedData = jsCode;
+            const jsonCode = generateJavaScriptCode(data);
+            document.getElementById('codeOutput').textContent = jsonCode;
+            processedData = jsonCode;
         }
         
         function generateJavaScriptCode(data) {
-            let code = `{\n\tmonth: "${data.month}",\n\tcrew_schedules: [\n`;
-            
-            data.crew_schedules.forEach((employee, index) => {
-                code += `\t\t{\n`;
-                code += `\t\t\temployeeID: "${employee.employeeID}",\n`;
-                code += `\t\t\tduties: [`;
-                
-                const duties = employee.duties.map(duty => `"${duty}"`).join(',');
-                code += duties;
-                
-                code += `]\n`;
-                code += `\t\t}`;
-                
-                if (index < data.crew_schedules.length - 1) {
-                    code += ',';
-                }
-                code += '\n';
-            });
-            
-            code += '\t]\n}';
-            
-            return code;
+            // Generate proper JSON format
+            return JSON.stringify(data, null, 2);
         }
         
         function copyToClipboard() {
