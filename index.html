@@ -22,15 +22,6 @@
             padding: 20px;
         }
         
-        @keyframes backgroundShift {
-            0%, 100% { 
-                background-position: center, center, 25px 25px, 25px 25px, center, 100px 200px, 200px 100px, center; 
-            }
-            50% { 
-                background-position: center, center, 0 0, 0 0, 50px 50px, 300px 400px, 400px 300px, center; 
-            }
-        }
-        
         .container {
             max-width: 900px;
             margin: 0 auto;
@@ -655,7 +646,7 @@
                     if (result.success) {
                         displayResults(result.data, result.stats);
                         if (selectedDataType === 'flight-duty') {
-                            showStatus(`順利轉換 ${result.data.schedules.length} 個排程`, 'success');
+                            showStatus(`順利轉換 ${result.data.length} 個任務記錄`, 'success');
                         } else {
                             showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班表`, 'success');
                         }
@@ -825,224 +816,154 @@
             
             function getDayFromSheetName(sheetName) {
                 const dayMap = {
-                    '週一': 'Monday', '週二': 'Tuesday', '週三': 'Wednesday',
-                    '週四': 'Thursday', '週五': 'Friday', '週六': 'Saturday', '週日': 'Sunday'
+                    '週一': 1, '週二': 2, '週三': 3, '週四': 4, 
+                    '週五': 5, '週六': 6, '週日': 7
                 };
-                for (const [chinese, english] of Object.entries(dayMap)) {
-                    if (sheetName.includes(chinese)) return english;
+                for (const [chinese, dayNum] of Object.entries(dayMap)) {
+                    if (sheetName.includes(chinese)) return dayNum;
                 }
-                return 'Unknown';
+                return null;
             }
             
-            // Convert monthStr from "2025年09月" format to "202509月" format
-            function convertMonthFormat(monthStr) {
-                const yearMatch = monthStr.match(/(\d{4})年/);
-                const monthMatch = monthStr.match(/(\d{2})月/);
-                
-                if (yearMatch && monthMatch) {
-                    return `${yearMatch[1]}${monthMatch[1]}月`;
-                }
-                
-                // Fallback to current month if parsing fails
-                const currentDate = new Date();
-                const currentYear = currentDate.getFullYear();
-                const currentMonth = currentDate.getMonth() + 1;
-                return `${currentYear}${currentMonth.toString().padStart(2, '0')}月`;
-            }
-            
-            const database = {
-                month: convertMonthFormat(monthStr),
-                schedules: []
-            };
-            
+            // Flat array structure for direct database insertion
+            const dutyRecords = [];
             const debugLog = [];
             
             workbook.SheetNames.forEach(sheetName => {
                 debugLog.push(`\n=== Processing ${sheetName} ===`);
                 const sheet = workbook.Sheets[sheetName];
                 
-                // Determine schedule type
+                const dayOfWeek = getDayFromSheetName(sheetName);
                 let scheduleType = 'regular';
                 let specialDate = null;
-                const dayOfWeek = getDayFromSheetName(sheetName);
                 
                 if (sheetName.includes('22日')) {
                     scheduleType = 'special';
-                    specialDate = '2025-09-22';
+                    specialDate = 22;
                 } else if (sheetName.includes('29日')) {
                     scheduleType = 'special';
-                    specialDate = '2025-09-29';
+                    specialDate = 29;
                 }
                 
-                const scheduleId = `${dayOfWeek.toUpperCase()}_${scheduleType.toUpperCase()}` + 
-                                 (specialDate ? `_${specialDate.split('-')[2]}` : '');
+                debugLog.push(`Day: ${dayOfWeek}, Type: ${scheduleType}, Special: ${specialDate}`);
                 
-                debugLog.push(`Schedule: ${scheduleId} (${dayOfWeek}, ${scheduleType})`);
+                // Expanded duty row patterns to capture more data
+                const amDutyRows = [4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64, 68, 72, 76, 80];
+                const pmDutyRows = [5, 9, 13, 17, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65, 69, 73, 77, 81];
                 
-                // Define exact cell patterns based on analysis
-                const amDutyRows = [4, 8, 12, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64];
-                const pmDutyRows = [5, 9, 13, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65];
-                
-                const duties = [];
                 const foundDuties = new Set();
                 
-                // Process AM duties using exact pattern
+                // Process AM duties
                 amDutyRows.forEach(row => {
                     const dutyCell = sheet['B' + row];
                     if (!dutyCell || !dutyCell.w) return;
                     
                     let dutyCode = dutyCell.w.toString().replace('-', '').trim();
-                    if (!dutyCode.match(/^[A-Z][2]$/)) return; // AM duties end with 2
+                    if (!dutyCode.match(/^[A-Z][2]$/)) return;
+                    if (foundDuties.has(dutyCode)) return;
+                    if (['U2', 'U4', 'U6', 'U8'].includes(dutyCode)) return;
                     
-                    if (foundDuties.has(dutyCode)) {
-                        debugLog.push(`  Skipping duplicate AM duty ${dutyCode} at row ${row}`);
-                        return;
-                    }
-                    
-                    // Get reporting time from column C (same row)
                     const reportCell = sheet['C' + row];
                     let reportTime = null;
                     if (reportCell && reportCell.v) {
                         reportTime = formatTime(reportCell.v);
                     }
+                    if (!reportTime || reportTime === '00:00') return;
                     
-                    if (!reportTime || reportTime === '00:00') {
-                        debugLog.push(`  ${dutyCode} at row ${row}: No reporting time (placeholder) - skipped`);
-                        return;
-                    }
-                    
-                    debugLog.push(`  Found AM duty ${dutyCode} at row ${row}: Report time ${reportTime}`);
-                    
-                    // Find end times using the +2 row pattern for AM duties
                     const endTimeRow = row + 2;
                     const sectors = [];
                     
-                    // AM duties: scan columns E, F, G, H, I, J for end times
-                    for (let col = 5; col <= 10; col++) { // E=5, F=6, G=7, H=8, I=9, J=10
+                    for (let col = 5; col <= 10; col++) {
                         const cellRef = String.fromCharCode(64 + col) + endTimeRow;
                         const timeCell = sheet[cellRef];
-                        
                         if (timeCell && timeCell.w && timeCell.w.match(/^\d{1,2}:\d{2}$/)) {
                             sectors.push(timeCell.w);
                         } else {
-                            break; // Stop at first gap
+                            break;
                         }
                     }
                     
                     if (sectors.length > 0 && [2, 4, 6].includes(sectors.length)) {
-                        const duty = {
+                        // Create record for direct database insertion
+                        const dutyRecord = {
+                            month_id: monthStr,
                             duty_code: dutyCode,
+                            day_of_week: dayOfWeek,
+                            schedule_type: scheduleType,
+                            special_date: specialDate,
                             reporting_time: reportTime,
-                            duty_end_time: sectors[sectors.length - 1],
+                            end_time: sectors[sectors.length - 1],
                             total_sectors: sectors.length,
-                            is_flight_duty: true,
-                            duty_type: 'AM'
+                            duty_type: 'AM',
+                            priority: scheduleType === 'special' ? 1 : 0
                         };
                         
-                        duties.push(duty);
+                        dutyRecords.push(dutyRecord);
                         foundDuties.add(dutyCode);
-                        debugLog.push(`    ✓ AM ${dutyCode}: ${reportTime} → ${duty.duty_end_time} (${duty.total_sectors} sectors at row ${endTimeRow})`);
-                    } else {
-                        debugLog.push(`    ✗ AM ${dutyCode}: Invalid sectors found (${sectors.length})`);
+                        debugLog.push(`    ✓ AM ${dutyCode}: ${reportTime} → ${dutyRecord.end_time}`);
                     }
                 });
                 
-                // Process PM duties using exact pattern
+                // Process PM duties
                 pmDutyRows.forEach(row => {
                     const dutyCell = sheet['B' + row];
                     if (!dutyCell || !dutyCell.w) return;
                     
                     let dutyCode = dutyCell.w.toString().replace('-', '').trim();
-                    if (!dutyCode.match(/^[A-Z][4]$/)) return; // PM duties end with 4
+                    if (!dutyCode.match(/^[A-Z][4]$/)) return;
+                    if (foundDuties.has(dutyCode)) return;
+                    if (['U2', 'U4', 'U6', 'U8'].includes(dutyCode)) return;
                     
-                    if (foundDuties.has(dutyCode)) {
-                        debugLog.push(`  Skipping duplicate PM duty ${dutyCode} at row ${row}`);
-                        return;
-                    }
-                    
-                    // Get reporting time from column C (same row)
                     const reportCell = sheet['C' + row];
                     let reportTime = null;
                     if (reportCell && reportCell.v) {
                         reportTime = formatTime(reportCell.v);
                     }
+                    if (!reportTime || reportTime === '00:00') return;
                     
-                    if (!reportTime || reportTime === '00:00') {
-                        debugLog.push(`  ${dutyCode} at row ${row}: No reporting time (placeholder) - skipped`);
-                        return;
-                    }
-                    
-                    debugLog.push(`  Found PM duty ${dutyCode} at row ${row}: Report time ${reportTime}`);
-                    
-                    // Find end times using the +1 row pattern for PM duties  
                     const endTimeRow = row + 1;
                     const sectors = [];
                     
-                    // PM duties: scan columns L, M, N, O, P, Q for end times
-                    for (let col = 12; col <= 17; col++) { // L=12, M=13, N=14, O=15, P=16, Q=17
+                    for (let col = 12; col <= 17; col++) {
                         const cellRef = String.fromCharCode(64 + col) + endTimeRow;
                         const timeCell = sheet[cellRef];
-                        
                         if (timeCell && timeCell.w && timeCell.w.match(/^\d{1,2}:\d{2}$/)) {
                             sectors.push(timeCell.w);
                         } else {
-                            break; // Stop at first gap
+                            break;
                         }
                     }
                     
                     if (sectors.length > 0 && [2, 4, 6].includes(sectors.length)) {
-                        const duty = {
+                        const dutyRecord = {
+                            month_id: monthStr,
                             duty_code: dutyCode,
+                            day_of_week: dayOfWeek,
+                            schedule_type: scheduleType,
+                            special_date: specialDate,
                             reporting_time: reportTime,
-                            duty_end_time: sectors[sectors.length - 1],
+                            end_time: sectors[sectors.length - 1],
                             total_sectors: sectors.length,
-                            is_flight_duty: true,
-                            duty_type: 'PM'
+                            duty_type: 'PM',
+                            priority: scheduleType === 'special' ? 1 : 0
                         };
                         
-                        duties.push(duty);
+                        dutyRecords.push(dutyRecord);
                         foundDuties.add(dutyCode);
-                        debugLog.push(`    ✓ PM ${dutyCode}: ${reportTime} → ${duty.duty_end_time} (${duty.total_sectors} sectors at row ${endTimeRow})`);
-                    } else {
-                        debugLog.push(`    ✗ PM ${dutyCode}: Invalid sectors found (${sectors.length})`);
+                        debugLog.push(`    ✓ PM ${dutyCode}: ${reportTime} → ${dutyRecord.end_time}`);
                     }
                 });
-                
-                // Filter out problematic duties
-                const cleanDuties = duties.filter(duty => {
-                    if (['U2', 'U4', 'U6', 'U8'].includes(duty.duty_code)) {
-                        debugLog.push(`  Blocked phantom duty: ${duty.duty_code}`);
-                        return false;
-                    }
-                    return true;
-                });
-                
-                if (cleanDuties.length > 0) {
-                    database.schedules.push({
-                        schedule_id: scheduleId,
-                        day_of_week: dayOfWeek,
-                        schedule_type: scheduleType,
-                        special_date: specialDate,
-                        sheet_name: sheetName,
-                        duties: cleanDuties
-                    });
-                    
-                    debugLog.push(`  Final result: ${cleanDuties.length} valid duties`);
-                } else {
-                    debugLog.push(`  No valid duties found in ${sheetName}`);
-                }
             });
             
             debugLog.push(`\n=== EXTRACTION COMPLETE ===`);
-            debugLog.push(`Total schedules: ${database.schedules.length}`);
-            debugLog.push(`Total duties: ${database.schedules.reduce((sum, s) => sum + s.duties.length, 0)}`);
+            debugLog.push(`Total duty records: ${dutyRecords.length}`);
             
             return {
                 success: true,
-                data: database,
+                data: dutyRecords, // Return flat array directly
                 stats: {
-                    employeeCount: database.schedules.length,
-                    totalDuties: database.schedules.reduce((sum, s) => sum + s.duties.length, 0),
+                    employeeCount: new Set(dutyRecords.map(d => `${d.day_of_week}_${d.schedule_type}`)).size,
+                    totalDuties: dutyRecords.length,
                     completionRate: 100
                 }
             };
@@ -1051,23 +972,44 @@
         function displayResults(data, stats) {
             document.getElementById('results').classList.remove('hidden');
             
-            // Use provided stats or calculate from data
-            const finalStats = stats || {
-                employeeCount: selectedDataType === 'flight-duty' ? data.schedules.length : data.crew_schedules.length,
-                totalDuties: selectedDataType === 'flight-duty' ? 
-                    data.schedules.reduce((sum, s) => sum + s.duties.length, 0) :
-                    data.crew_schedules.reduce((sum, emp) => sum + emp.duties.filter(d => d !== '').length, 0),
-                completionRate: selectedDataType === 'flight-duty' ? 100 :
-                    Math.round((data.crew_schedules.filter(emp => 
+            // Handle both old nested structure and new flat array structure
+            let finalStats, jsonOutput;
+            
+            if (selectedDataType === 'flight-duty') {
+                // New flat structure - data is array of records
+                if (Array.isArray(data)) {
+                    finalStats = stats || {
+                        employeeCount: new Set(data.map(d => `${d.day_of_week}_${d.schedule_type}`)).size,
+                        totalDuties: data.length,
+                        completionRate: 100
+                    };
+                    jsonOutput = data; // Direct array for database insertion
+                } else {
+                    // Old nested structure (fallback)
+                    finalStats = stats || {
+                        employeeCount: data.schedules ? data.schedules.length : 0,
+                        totalDuties: data.schedules ? data.schedules.reduce((sum, s) => sum + s.duties.length, 0) : 0,
+                        completionRate: 100
+                    };
+                    jsonOutput = data;
+                }
+            } else {
+                // Schedule data (crew schedules)
+                finalStats = stats || {
+                    employeeCount: data.crew_schedules.length,
+                    totalDuties: data.crew_schedules.reduce((sum, emp) => sum + emp.duties.filter(d => d !== '').length, 0),
+                    completionRate: Math.round((data.crew_schedules.filter(emp => 
                         emp.duties.filter(d => d !== '').length >= 15
                     ).length / data.crew_schedules.length) * 100)
-            };
+                };
+                jsonOutput = data;
+            }
             
             document.getElementById('employeeCount').textContent = finalStats.employeeCount;
             document.getElementById('dutyCount').textContent = finalStats.totalDuties;
             document.getElementById('completionRate').textContent = finalStats.completionRate + '%';
             
-            const jsonCode = JSON.stringify(data, null, 2);
+            const jsonCode = JSON.stringify(jsonOutput, null, 2);
             document.getElementById('codeOutput').textContent = jsonCode;
             processedData = jsonCode;
         }
@@ -1078,7 +1020,7 @@
             navigator.clipboard.writeText(processedData).then(function() {
                 const button = document.querySelector('.copy-button');
                 const originalText = button.textContent;
-                button.textContent = '✅ Copied!';
+                button.textContent = '✓ Copied!';
                 button.style.background = 'rgba(16, 185, 129, 0.8)';
                 
                 setTimeout(() => {
