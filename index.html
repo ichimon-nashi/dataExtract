@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Excel班表轉換器</title>
+    <title>Excel資料轉換器</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <style>
         * {
@@ -14,32 +14,34 @@
         
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-image: url("https://images.unsplash.com/photo-1671010496251-22eab06e3292?fm=jpg&q=60&w=3000&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8bW9udCUyMHNhaW50JTIwbWljaGVsfGVufDB8fDB8fHww");
-            background-size: 100% 100%;
+            background-image: url("https://wallpapercat.com/w/full/e/3/b/295535-1920x1200-desktop-hd-prague-background-image.jpg");
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
             min-height: 100vh;
             padding: 20px;
         }
         
         @keyframes backgroundShift {
             0%, 100% { 
-                background-position: 0 0, 0 0, 25px 25px, 25px 25px, 0 0, 100px 200px, 200px 100px, 0 0; 
+                background-position: center, center, 25px 25px, 25px 25px, center, 100px 200px, 200px 100px, center; 
             }
             50% { 
-                background-position: 25px 25px, 25px 25px, 0 0, 0 0, 50px 50px, 300px 400px, 400px 300px, 0 0; 
+                background-position: center, center, 0 0, 0 0, 50px 50px, 300px 400px, 400px 300px, center; 
             }
         }
         
         .container {
             max-width: 900px;
             margin: 0 auto;
-            background: rgba(255, 255, 255, 0.15);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             border-radius: 25px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             box-shadow: 
-                0 25px 45px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+                0 25px 45px rgba(0, 0, 0, 0.2),
+                inset 0 1px 0 rgba(255, 255, 255, 0.15);
             overflow: hidden;
             position: relative;
         }
@@ -80,6 +82,46 @@
         
         .upload-section {
             margin-bottom: 40px;
+        }
+        
+        .data-type-selector {
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .data-type-option {
+            padding: 15px 30px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            color: white;
+            border: 2px solid transparent;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+        
+        .data-type-option.active.schedule-type {
+            border-color: rgba(16, 185, 129, 0.6);
+            background: rgba(16, 185, 129, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(16, 185, 129, 0.3);
+        }
+        
+        .data-type-option.active.flight-duty-type {
+            border-color: rgba(147, 51, 234, 0.6);
+            background: rgba(147, 51, 234, 0.2);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(147, 51, 234, 0.3);
+        }
+        
+        .data-type-option:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-1px);
         }
         
         .file-input-wrapper {
@@ -379,6 +421,11 @@
                 padding: 18px 30px;
                 font-size: 1.1rem;
             }
+            
+            .data-type-selector {
+                flex-direction: column;
+                gap: 15px;
+            }
         }
     </style>
 </head>
@@ -386,15 +433,24 @@
     <div class="container">
         <div class="main-content">
             <div class="title-section">
-                <h1>📊 Excel班表轉換器</h1>
+                <h1>Excel資料轉換器</h1>
                 <p>謝謝美菁姐才能將班表變成我需要的資料格式!</p>
             </div>
             
             <div class="upload-section">
+                <div class="data-type-selector">
+                    <div class="data-type-option active schedule-type" data-type="schedule" onclick="selectDataType('schedule')">
+                        班表資料
+                    </div>
+                    <div class="data-type-option flight-duty-type" data-type="flight-duty" onclick="selectDataType('flight-duty')">
+                        派飛表資料
+                    </div>
+                </div>
+                
                 <div class="file-input-wrapper">
                     <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" />
                     <button class="file-input-button">
-                        📁 挑選班表檔案
+                        挑選檔案
                     </button>
                 </div>
                 
@@ -413,11 +469,11 @@
                 <div class="stats">
                     <div class="stat-card">
                         <div class="stat-number" id="employeeCount">0</div>
-                        <div class="stat-label">組員的班</div>
+                        <div class="stat-label" id="employeeLabel">組員的班</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="dutyCount">0</div>
-                        <div class="stat-label">所有分析完的任務</div>
+                        <div class="stat-label" id="dutyLabel">所有分析完的任務</div>
                     </div>
                     <div class="stat-card">
                         <div class="stat-number" id="completionRate">0%</div>
@@ -427,7 +483,7 @@
                 
                 <h3>產生的JSON:</h3>
                 <div class="code-output">
-                    <button class="copy-button" onclick="copyToClipboard()">📋 Copy</button>
+                    <button class="copy-button" onclick="copyToClipboard()">Copy</button>
                     <pre id="codeOutput"></pre>
                 </div>
             </div>
@@ -437,6 +493,36 @@
     <script>
         let processedData = null;
         let detectedMonth = null;
+        let selectedDataType = 'schedule';
+        
+        function selectDataType(type) {
+            selectedDataType = type;
+            document.querySelectorAll('.data-type-option').forEach(option => {
+                option.classList.remove('active');
+            });
+            
+            if (type === 'schedule') {
+                document.querySelector('.schedule-type').classList.add('active');
+            } else {
+                document.querySelector('.flight-duty-type').classList.add('active');
+            }
+            
+            // Reset file selection and month detection
+            document.getElementById('fileInput').value = '';
+            document.getElementById('processButton').disabled = true;
+            document.getElementById('monthDisplay').classList.add('hidden');
+            document.getElementById('results').classList.add('hidden');
+            document.getElementById('status').classList.add('hidden');
+            
+            // Update labels based on data type
+            if (type === 'flight-duty') {
+                document.getElementById('employeeLabel').textContent = 'Schedules Processed';
+                document.getElementById('dutyLabel').textContent = 'Total Duties Extracted';
+            } else {
+                document.getElementById('employeeLabel').textContent = '組員的班';
+                document.getElementById('dutyLabel').textContent = '所有分析完的任務';
+            }
+        }
         
         document.getElementById('fileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -457,44 +543,58 @@
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
-                    let worksheet;
-                    if (workbook.Sheets['班表輸入']) {
-                        worksheet = workbook.Sheets['班表輸入'];
+                    if (selectedDataType === 'flight-duty') {
+                        // For flight duty, use current month
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                        detectedMonth = `${year}年${month}月`;
+                        
+                        document.getElementById('detectedMonth').textContent = detectedMonth + ' (自動偵測)';
+                        document.getElementById('monthDisplay').classList.remove('hidden');
+                        document.getElementById('processButton').disabled = false;
+                        showStatus(`檔案分析完成，使用當前月份: ${detectedMonth}`, 'success');
                     } else {
-                        const sheetName = workbook.SheetNames[0];
-                        worksheet = workbook.Sheets[sheetName];
-                    }
-                    
-                    // Extract month from E1 cell
-                    const e1Cell = worksheet['E1'];
-                    if (e1Cell && e1Cell.v) {
-                        const e1Value = e1Cell.v.toString();
-                        console.log('E1 content:', e1Value);
-                        
-                        // Extract year and month using regex
-                        const yearMatch = e1Value.match(/(\d{4})/);
-                        const monthMatch = e1Value.match(/(\d{1,2})月/);
-                        
-                        if (yearMatch && monthMatch) {
-                            detectedMonth = `${yearMatch[1]}年${monthMatch[1].padStart(2, '0')}月`;
-                            document.getElementById('detectedMonth').textContent = detectedMonth;
-                            document.getElementById('monthDisplay').classList.remove('hidden');
-                            document.getElementById('processButton').disabled = false;
-                            showStatus(`檔案分析完成！檢測到月份: ${detectedMonth}`, 'success');
+                        // For schedule data, try to detect from E1 cell
+                        let worksheet;
+                        if (workbook.Sheets['班表輸入']) {
+                            worksheet = workbook.Sheets['班表輸入'];
                         } else {
-                            // Fallback: try to extract from filename or use current date
-                            const now = new Date();
-                            const year = now.getFullYear();
-                            const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                            detectedMonth = `${year}年${month}月`;
-                            
-                            document.getElementById('detectedMonth').textContent = detectedMonth + ' (預設)';
-                            document.getElementById('monthDisplay').classList.remove('hidden');
-                            document.getElementById('processButton').disabled = false;
-                            showStatus(`無法從檔案中檢測月份，使用預設值: ${detectedMonth}`, 'success');
+                            const sheetName = workbook.SheetNames[0];
+                            worksheet = workbook.Sheets[sheetName];
                         }
-                    } else {
-                        throw new Error('無法讀取檔案中的月份資訊');
+                        
+                        // Extract month from E1 cell
+                        const e1Cell = worksheet['E1'];
+                        if (e1Cell && e1Cell.v) {
+                            const e1Value = e1Cell.v.toString();
+                            console.log('E1 content:', e1Value);
+                            
+                            // Extract year and month using regex
+                            const yearMatch = e1Value.match(/(\d{4})/);
+                            const monthMatch = e1Value.match(/(\d{1,2})月/);
+                            
+                            if (yearMatch && monthMatch) {
+                                detectedMonth = `${yearMatch[1]}年${monthMatch[1].padStart(2, '0')}月`;
+                                document.getElementById('detectedMonth').textContent = detectedMonth;
+                                document.getElementById('monthDisplay').classList.remove('hidden');
+                                document.getElementById('processButton').disabled = false;
+                                showStatus(`檔案分析完成，檢測到月份: ${detectedMonth}`, 'success');
+                            } else {
+                                // Fallback: use current date
+                                const now = new Date();
+                                const year = now.getFullYear();
+                                const month = (now.getMonth() + 1).toString().padStart(2, '0');
+                                detectedMonth = `${year}年${month}月`;
+                                
+                                document.getElementById('detectedMonth').textContent = detectedMonth + ' (預設)';
+                                document.getElementById('monthDisplay').classList.remove('hidden');
+                                document.getElementById('processButton').disabled = false;
+                                showStatus(`無法從檔案中檢測月份，使用預設值: ${detectedMonth}`, 'success');
+                            }
+                        } else {
+                            throw new Error('無法讀取檔案中的月份資訊');
+                        }
                     }
                     
                 } catch (error) {
@@ -536,21 +636,29 @@
             reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
+                    const workbook = XLSX.read(data, { cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true, sheetStubs: true });
                     
-                    let worksheet;
-                    if (workbook.Sheets['班表輸入']) {
-                        worksheet = workbook.Sheets['班表輸入'];
+                    let result;
+                    if (selectedDataType === 'flight-duty') {
+                        result = extractFlightDutiesCompanyFormat(workbook, detectedMonth);
                     } else {
-                        const sheetName = workbook.SheetNames[0];
-                        worksheet = workbook.Sheets[sheetName];
+                        let worksheet;
+                        if (workbook.Sheets['班表輸入']) {
+                            worksheet = workbook.Sheets['班表輸入'];
+                        } else {
+                            const sheetName = workbook.SheetNames[0];
+                            worksheet = workbook.Sheets[sheetName];
+                        }
+                        result = convertToDataRoster(worksheet, detectedMonth);
                     }
                     
-                    const result = convertToDataRoster(worksheet, detectedMonth);
-                    
                     if (result.success) {
-                        displayResults(result.data);
-                        showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班表`, 'success');
+                        displayResults(result.data, result.stats);
+                        if (selectedDataType === 'flight-duty') {
+                            showStatus(`順利轉換 ${result.data.schedules.length} 個排程`, 'success');
+                        } else {
+                            showStatus(`順利轉換 ${result.data.crew_schedules.length} 組員的班表`, 'success');
+                        }
                     } else {
                         showStatus(`轉換失敗: ${result.error}`, 'error');
                     }
@@ -704,32 +812,264 @@
             }
         }
         
-        function displayResults(data) {
-            document.getElementById('results').classList.remove('hidden');
+        function extractFlightDutiesCompanyFormat(workbook, monthStr) {
+            function formatTime(excelDate) {
+                if (!excelDate) return null;
+                try {
+                    const date = new Date(excelDate);
+                    return date.toTimeString().substring(0, 5);
+                } catch (e) {
+                    return null;
+                }
+            }
             
-            const stats = {
-                employeeCount: data.crew_schedules.length,
-                totalDuties: data.crew_schedules.reduce((sum, emp) => 
-                    sum + emp.duties.filter(d => d !== '').length, 0),
-                completionRate: Math.round(
-                    (data.crew_schedules.filter(emp => 
-                        emp.duties.filter(d => d !== '').length >= 15
-                    ).length / data.crew_schedules.length) * 100
-                )
+            function getDayFromSheetName(sheetName) {
+                const dayMap = {
+                    '週一': 'Monday', '週二': 'Tuesday', '週三': 'Wednesday',
+                    '週四': 'Thursday', '週五': 'Friday', '週六': 'Saturday', '週日': 'Sunday'
+                };
+                for (const [chinese, english] of Object.entries(dayMap)) {
+                    if (sheetName.includes(chinese)) return english;
+                }
+                return 'Unknown';
+            }
+            
+            // Convert monthStr from "2025年09月" format to "202509月" format
+            function convertMonthFormat(monthStr) {
+                const yearMatch = monthStr.match(/(\d{4})年/);
+                const monthMatch = monthStr.match(/(\d{2})月/);
+                
+                if (yearMatch && monthMatch) {
+                    return `${yearMatch[1]}${monthMatch[1]}月`;
+                }
+                
+                // Fallback to current month if parsing fails
+                const currentDate = new Date();
+                const currentYear = currentDate.getFullYear();
+                const currentMonth = currentDate.getMonth() + 1;
+                return `${currentYear}${currentMonth.toString().padStart(2, '0')}月`;
+            }
+            
+            const database = {
+                month: convertMonthFormat(monthStr),
+                schedules: []
             };
             
-            document.getElementById('employeeCount').textContent = stats.employeeCount;
-            document.getElementById('dutyCount').textContent = stats.totalDuties;
-            document.getElementById('completionRate').textContent = stats.completionRate + '%';
+            const debugLog = [];
             
-            const jsonCode = generateJavaScriptCode(data);
-            document.getElementById('codeOutput').textContent = jsonCode;
-            processedData = jsonCode;
+            workbook.SheetNames.forEach(sheetName => {
+                debugLog.push(`\n=== Processing ${sheetName} ===`);
+                const sheet = workbook.Sheets[sheetName];
+                
+                // Determine schedule type
+                let scheduleType = 'regular';
+                let specialDate = null;
+                const dayOfWeek = getDayFromSheetName(sheetName);
+                
+                if (sheetName.includes('22日')) {
+                    scheduleType = 'special';
+                    specialDate = '2025-09-22';
+                } else if (sheetName.includes('29日')) {
+                    scheduleType = 'special';
+                    specialDate = '2025-09-29';
+                }
+                
+                const scheduleId = `${dayOfWeek.toUpperCase()}_${scheduleType.toUpperCase()}` + 
+                                 (specialDate ? `_${specialDate.split('-')[2]}` : '');
+                
+                debugLog.push(`Schedule: ${scheduleId} (${dayOfWeek}, ${scheduleType})`);
+                
+                // Define exact cell patterns based on analysis
+                const amDutyRows = [4, 8, 12, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60, 64];
+                const pmDutyRows = [5, 9, 13, 21, 25, 29, 33, 37, 41, 45, 49, 53, 57, 61, 65];
+                
+                const duties = [];
+                const foundDuties = new Set();
+                
+                // Process AM duties using exact pattern
+                amDutyRows.forEach(row => {
+                    const dutyCell = sheet['B' + row];
+                    if (!dutyCell || !dutyCell.w) return;
+                    
+                    let dutyCode = dutyCell.w.toString().replace('-', '').trim();
+                    if (!dutyCode.match(/^[A-Z][2]$/)) return; // AM duties end with 2
+                    
+                    if (foundDuties.has(dutyCode)) {
+                        debugLog.push(`  Skipping duplicate AM duty ${dutyCode} at row ${row}`);
+                        return;
+                    }
+                    
+                    // Get reporting time from column C (same row)
+                    const reportCell = sheet['C' + row];
+                    let reportTime = null;
+                    if (reportCell && reportCell.v) {
+                        reportTime = formatTime(reportCell.v);
+                    }
+                    
+                    if (!reportTime || reportTime === '00:00') {
+                        debugLog.push(`  ${dutyCode} at row ${row}: No reporting time (placeholder) - skipped`);
+                        return;
+                    }
+                    
+                    debugLog.push(`  Found AM duty ${dutyCode} at row ${row}: Report time ${reportTime}`);
+                    
+                    // Find end times using the +2 row pattern for AM duties
+                    const endTimeRow = row + 2;
+                    const sectors = [];
+                    
+                    // AM duties: scan columns E, F, G, H, I, J for end times
+                    for (let col = 5; col <= 10; col++) { // E=5, F=6, G=7, H=8, I=9, J=10
+                        const cellRef = String.fromCharCode(64 + col) + endTimeRow;
+                        const timeCell = sheet[cellRef];
+                        
+                        if (timeCell && timeCell.w && timeCell.w.match(/^\d{1,2}:\d{2}$/)) {
+                            sectors.push(timeCell.w);
+                        } else {
+                            break; // Stop at first gap
+                        }
+                    }
+                    
+                    if (sectors.length > 0 && [2, 4, 6].includes(sectors.length)) {
+                        const duty = {
+                            duty_code: dutyCode,
+                            reporting_time: reportTime,
+                            duty_end_time: sectors[sectors.length - 1],
+                            total_sectors: sectors.length,
+                            is_flight_duty: true,
+                            duty_type: 'AM'
+                        };
+                        
+                        duties.push(duty);
+                        foundDuties.add(dutyCode);
+                        debugLog.push(`    ✓ AM ${dutyCode}: ${reportTime} → ${duty.duty_end_time} (${duty.total_sectors} sectors at row ${endTimeRow})`);
+                    } else {
+                        debugLog.push(`    ✗ AM ${dutyCode}: Invalid sectors found (${sectors.length})`);
+                    }
+                });
+                
+                // Process PM duties using exact pattern
+                pmDutyRows.forEach(row => {
+                    const dutyCell = sheet['B' + row];
+                    if (!dutyCell || !dutyCell.w) return;
+                    
+                    let dutyCode = dutyCell.w.toString().replace('-', '').trim();
+                    if (!dutyCode.match(/^[A-Z][4]$/)) return; // PM duties end with 4
+                    
+                    if (foundDuties.has(dutyCode)) {
+                        debugLog.push(`  Skipping duplicate PM duty ${dutyCode} at row ${row}`);
+                        return;
+                    }
+                    
+                    // Get reporting time from column C (same row)
+                    const reportCell = sheet['C' + row];
+                    let reportTime = null;
+                    if (reportCell && reportCell.v) {
+                        reportTime = formatTime(reportCell.v);
+                    }
+                    
+                    if (!reportTime || reportTime === '00:00') {
+                        debugLog.push(`  ${dutyCode} at row ${row}: No reporting time (placeholder) - skipped`);
+                        return;
+                    }
+                    
+                    debugLog.push(`  Found PM duty ${dutyCode} at row ${row}: Report time ${reportTime}`);
+                    
+                    // Find end times using the +1 row pattern for PM duties  
+                    const endTimeRow = row + 1;
+                    const sectors = [];
+                    
+                    // PM duties: scan columns L, M, N, O, P, Q for end times
+                    for (let col = 12; col <= 17; col++) { // L=12, M=13, N=14, O=15, P=16, Q=17
+                        const cellRef = String.fromCharCode(64 + col) + endTimeRow;
+                        const timeCell = sheet[cellRef];
+                        
+                        if (timeCell && timeCell.w && timeCell.w.match(/^\d{1,2}:\d{2}$/)) {
+                            sectors.push(timeCell.w);
+                        } else {
+                            break; // Stop at first gap
+                        }
+                    }
+                    
+                    if (sectors.length > 0 && [2, 4, 6].includes(sectors.length)) {
+                        const duty = {
+                            duty_code: dutyCode,
+                            reporting_time: reportTime,
+                            duty_end_time: sectors[sectors.length - 1],
+                            total_sectors: sectors.length,
+                            is_flight_duty: true,
+                            duty_type: 'PM'
+                        };
+                        
+                        duties.push(duty);
+                        foundDuties.add(dutyCode);
+                        debugLog.push(`    ✓ PM ${dutyCode}: ${reportTime} → ${duty.duty_end_time} (${duty.total_sectors} sectors at row ${endTimeRow})`);
+                    } else {
+                        debugLog.push(`    ✗ PM ${dutyCode}: Invalid sectors found (${sectors.length})`);
+                    }
+                });
+                
+                // Filter out problematic duties
+                const cleanDuties = duties.filter(duty => {
+                    if (['U2', 'U4', 'U6', 'U8'].includes(duty.duty_code)) {
+                        debugLog.push(`  Blocked phantom duty: ${duty.duty_code}`);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                if (cleanDuties.length > 0) {
+                    database.schedules.push({
+                        schedule_id: scheduleId,
+                        day_of_week: dayOfWeek,
+                        schedule_type: scheduleType,
+                        special_date: specialDate,
+                        sheet_name: sheetName,
+                        duties: cleanDuties
+                    });
+                    
+                    debugLog.push(`  Final result: ${cleanDuties.length} valid duties`);
+                } else {
+                    debugLog.push(`  No valid duties found in ${sheetName}`);
+                }
+            });
+            
+            debugLog.push(`\n=== EXTRACTION COMPLETE ===`);
+            debugLog.push(`Total schedules: ${database.schedules.length}`);
+            debugLog.push(`Total duties: ${database.schedules.reduce((sum, s) => sum + s.duties.length, 0)}`);
+            
+            return {
+                success: true,
+                data: database,
+                stats: {
+                    employeeCount: database.schedules.length,
+                    totalDuties: database.schedules.reduce((sum, s) => sum + s.duties.length, 0),
+                    completionRate: 100
+                }
+            };
         }
         
-        function generateJavaScriptCode(data) {
-            // Generate proper JSON format
-            return JSON.stringify(data, null, 2);
+        function displayResults(data, stats) {
+            document.getElementById('results').classList.remove('hidden');
+            
+            // Use provided stats or calculate from data
+            const finalStats = stats || {
+                employeeCount: selectedDataType === 'flight-duty' ? data.schedules.length : data.crew_schedules.length,
+                totalDuties: selectedDataType === 'flight-duty' ? 
+                    data.schedules.reduce((sum, s) => sum + s.duties.length, 0) :
+                    data.crew_schedules.reduce((sum, emp) => sum + emp.duties.filter(d => d !== '').length, 0),
+                completionRate: selectedDataType === 'flight-duty' ? 100 :
+                    Math.round((data.crew_schedules.filter(emp => 
+                        emp.duties.filter(d => d !== '').length >= 15
+                    ).length / data.crew_schedules.length) * 100)
+            };
+            
+            document.getElementById('employeeCount').textContent = finalStats.employeeCount;
+            document.getElementById('dutyCount').textContent = finalStats.totalDuties;
+            document.getElementById('completionRate').textContent = finalStats.completionRate + '%';
+            
+            const jsonCode = JSON.stringify(data, null, 2);
+            document.getElementById('codeOutput').textContent = jsonCode;
+            processedData = jsonCode;
         }
         
         function copyToClipboard() {
@@ -753,4 +1093,3 @@
     </script>
 </body>
 </html>
-
