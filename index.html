@@ -535,16 +535,60 @@
                     const workbook = XLSX.read(data, { type: 'array' });
                     
                     if (selectedDataType === 'flight-duty') {
-                        // For flight duty, use current month
-                        const now = new Date();
-                        const year = now.getFullYear();
-                        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-                        detectedMonth = `${year}年${month}月`;
+                        // For flight duty, detect month from sheet names
+                        const sheetNames = workbook.SheetNames;
+                        let detectedYear = null;
+                        let detectedMonthNum = null;
                         
-                        document.getElementById('detectedMonth').textContent = detectedMonth + ' (自動偵測)';
+                        // Month mapping
+                        const monthMap = {
+                            'JAN': '01', 'FEB': '02', 'MAR': '03', 'APR': '04',
+                            'MAY': '05', 'JUN': '06', 'JUL': '07', 'AUG': '08',
+                            'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
+                        };
+                        
+                        // Try to find month from sheet names like "DEC週一派遣表"
+                        for (const sheetName of sheetNames) {
+                            for (const [monthAbbr, monthNum] of Object.entries(monthMap)) {
+                                if (sheetName.toUpperCase().includes(monthAbbr)) {
+                                    detectedMonthNum = monthNum;
+                                    break;
+                                }
+                            }
+                            if (detectedMonthNum) break;
+                        }
+                        
+                        // Try to get year from G1 cell if available
+                        const firstSheet = workbook.Sheets[sheetNames[0]];
+                        const g1Cell = firstSheet['G1'];
+                        if (g1Cell && g1Cell.v) {
+                            const g1Value = g1Cell.v.toString();
+                            const yearMatch = g1Value.match(/(\d{4})/);
+                            if (yearMatch) {
+                                detectedYear = yearMatch[1];
+                            }
+                        }
+                        
+                        // Fallback to current year if not found
+                        if (!detectedYear) {
+                            detectedYear = new Date().getFullYear().toString();
+                        }
+                        
+                        // Fallback to current month if not detected
+                        if (!detectedMonthNum) {
+                            const now = new Date();
+                            detectedMonthNum = (now.getMonth() + 1).toString().padStart(2, '0');
+                            detectedMonth = `${detectedYear}年${detectedMonthNum}月`;
+                            document.getElementById('detectedMonth').textContent = detectedMonth + ' (預設)';
+                            showStatus(`無法從檔案中檢測月份，使用預設值: ${detectedMonth}`, 'success');
+                        } else {
+                            detectedMonth = `${detectedYear}年${detectedMonthNum}月`;
+                            document.getElementById('detectedMonth').textContent = detectedMonth + ' (自動偵測)';
+                            showStatus(`檔案分析完成，檢測到月份: ${detectedMonth}`, 'success');
+                        }
+                        
                         document.getElementById('monthDisplay').classList.remove('hidden');
                         document.getElementById('processButton').disabled = false;
-                        showStatus(`檔案分析完成，使用當前月份: ${detectedMonth}`, 'success');
                     } else {
                         // For schedule data, try to detect from E1 cell
                         let worksheet;
