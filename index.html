@@ -768,17 +768,17 @@
                             const nextCell = worksheet[nextCellAddr];
                             const nextDuty = nextCell && nextCell.v ? nextCell.v.toString().trim() : '';
                             
-                            // Combine duties with "/" if both exist, otherwise use the one that exists
+                            // Combine duties with "\" if both exist, otherwise use the one that exists
                             let combinedDuty = '';
                             if (mainDuty && nextDuty) {
-                                // Clean up any newlines in duties and combine
-                                const cleanMain = mainDuty.replace(/\n/g, ' ').trim();
-                                const cleanNext = nextDuty.replace(/\n/g, ' ').trim();
-                                combinedDuty = `${cleanMain}/${cleanNext}`;
+                                // Replace newlines within duties with "\" and combine with "\"
+                                const cleanMain = mainDuty.replace(/\n/g, '\\').trim();
+                                const cleanNext = nextDuty.replace(/\n/g, '\\').trim();
+                                combinedDuty = `${cleanMain}\\${cleanNext}`;
                             } else if (mainDuty) {
-                                combinedDuty = mainDuty.replace(/\n/g, ' ').trim();
+                                combinedDuty = mainDuty.replace(/\n/g, '\\').trim();
                             } else if (nextDuty) {
-                                combinedDuty = nextDuty.replace(/\n/g, ' ').trim();
+                                combinedDuty = nextDuty.replace(/\n/g, '\\').trim();
                             }
                             
                             duties.push(combinedDuty);
