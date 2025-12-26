@@ -808,12 +808,14 @@
                             // Get duty from main row
                             const mainCellAddr = XLSX.utils.encode_cell({r: row, c: dutyCol});
                             const mainCell = worksheet[mainCellAddr];
-                            const mainDuty = mainCell && mainCell.v ? mainCell.v.toString().trim() : '';
+                            // Use .w (formatted text) if available, otherwise fall back to .v
+                            const mainDuty = mainCell ? (mainCell.w || (mainCell.v ? mainCell.v.toString() : '')).trim() : '';
                             
                             // Get duty from next row (row + 1)
                             const nextCellAddr = XLSX.utils.encode_cell({r: row + 1, c: dutyCol});
                             const nextCell = worksheet[nextCellAddr];
-                            const nextDuty = nextCell && nextCell.v ? nextCell.v.toString().trim() : '';
+                            // Use .w (formatted text) if available, otherwise fall back to .v
+                            const nextDuty = nextCell ? (nextCell.w || (nextCell.v ? nextCell.v.toString() : '')).trim() : '';
                             
                             // Combine duties with "\" if both exist, otherwise use the one that exists
                             let combinedDuty = '';
