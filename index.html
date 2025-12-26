@@ -547,30 +547,56 @@
                             'SEP': '09', 'OCT': '10', 'NOV': '11', 'DEC': '12'
                         };
                         
-                        // Try to find month from sheet names like "DEC週一派遣表"
+                        // Try to find month and year from sheet names
                         for (const sheetName of sheetNames) {
+                            // Try to extract year from sheet name (e.g., "2026JAN週一派遣表" or "JAN2026週一派遣表")
+                            const yearMatch = sheetName.match(/(\d{4})/);
+                            if (yearMatch && !detectedYear) {
+                                detectedYear = yearMatch[1];
+                            }
+                            
+                            // Try to find month abbreviation
                             for (const [monthAbbr, monthNum] of Object.entries(monthMap)) {
                                 if (sheetName.toUpperCase().includes(monthAbbr)) {
                                     detectedMonthNum = monthNum;
                                     break;
                                 }
                             }
-                            if (detectedMonthNum) break;
+                            if (detectedMonthNum && detectedYear) break;
                         }
                         
-                        // Try to get year from G1 cell if available
-                        const firstSheet = workbook.Sheets[sheetNames[0]];
-                        const g1Cell = firstSheet['G1'];
-                        if (g1Cell && g1Cell.v) {
-                            const g1Value = g1Cell.v.toString();
-                            const yearMatch = g1Value.match(/(\d{4})/);
-                            if (yearMatch) {
-                                detectedYear = yearMatch[1];
+                        // Try to get year from G1 cell if not found in sheet names
+                        if (!detectedYear) {
+                            const firstSheet = workbook.Sheets[sheetNames[0]];
+                            const g1Cell = firstSheet['G1'];
+                            if (g1Cell && g1Cell.v) {
+                                const g1Value = g1Cell.v.toString();
+                                const yearMatch = g1Value.match(/(\d{4})/);
+                                if (yearMatch) {
+                                    detectedYear = yearMatch[1];
+                                }
                             }
                         }
                         
-                        // Fallback to current year if not found
-                        if (!detectedYear) {
+                        // Intelligent fallback for year if still not found
+                        if (!detectedYear && detectedMonthNum) {
+                            const now = new Date();
+                            const currentYear = now.getFullYear();
+                            const currentMonth = now.getMonth() + 1; // 0-indexed
+                            const detectedMonthInt = parseInt(detectedMonthNum);
+                            
+                            // If detected month is in the near future (within 3 months) or recent past (within 9 months)
+                            // we can make an intelligent guess
+                            if (detectedMonthInt >= currentMonth - 9 && detectedMonthInt <= 12) {
+                                detectedYear = currentYear.toString();
+                            } else if (detectedMonthInt >= 1 && detectedMonthInt < currentMonth - 9) {
+                                // If it's early in the year but we're late in the year, it's probably next year
+                                detectedYear = (currentYear + 1).toString();
+                            } else {
+                                detectedYear = currentYear.toString();
+                            }
+                        } else if (!detectedYear) {
+                            // Final fallback
                             detectedYear = new Date().getFullYear().toString();
                         }
                         
@@ -609,14 +635,35 @@
                             const yearMatch = e1Value.match(/(\d{4})/);
                             const monthMatch = e1Value.match(/(\d{1,2})月/);
                             
-                            if (yearMatch && monthMatch) {
-                                detectedMonth = `${yearMatch[1]}年${monthMatch[1].padStart(2, '0')}月`;
-                                document.getElementById('detectedMonth').textContent = detectedMonth;
+                            let detectedYear = yearMatch ? yearMatch[1] : null;
+                            let detectedMonthNum = monthMatch ? monthMatch[1].padStart(2, '0') : null;
+                            
+                            // Intelligent fallback for year if not found
+                            if (!detectedYear && detectedMonthNum) {
+                                const now = new Date();
+                                const currentYear = now.getFullYear();
+                                const currentMonth = now.getMonth() + 1;
+                                const monthInt = parseInt(detectedMonthNum);
+                                
+                                // If detected month is in recent past (within 9 months) or current year
+                                if (monthInt >= currentMonth - 9 && monthInt <= 12) {
+                                    detectedYear = currentYear.toString();
+                                } else if (monthInt >= 1 && monthInt < currentMonth - 9) {
+                                    // Early in year but we're late in year, probably next year
+                                    detectedYear = (currentYear + 1).toString();
+                                } else {
+                                    detectedYear = currentYear.toString();
+                                }
+                            }
+                            
+                            if (detectedYear && detectedMonthNum) {
+                                detectedMonth = `${detectedYear}年${detectedMonthNum}月`;
+                                document.getElementById('detectedMonth').textContent = detectedMonth + ' (自動偵測)';
                                 document.getElementById('monthDisplay').classList.remove('hidden');
                                 document.getElementById('processButton').disabled = false;
                                 showStatus(`檔案分析完成，檢測到月份: ${detectedMonth}`, 'success');
                             } else {
-                                // Fallback: use current date
+                                // Complete fallback: use current date
                                 const now = new Date();
                                 const year = now.getFullYear();
                                 const month = (now.getMonth() + 1).toString().padStart(2, '0');
