@@ -565,13 +565,13 @@
                             if (detectedMonthNum && detectedYear) break;
                         }
                         
-                        // Try to get year from G1 cell if not found in sheet names
+                        // Try to get year from O1 cell if not found in sheet names
                         if (!detectedYear) {
                             const firstSheet = workbook.Sheets[sheetNames[0]];
-                            const g1Cell = firstSheet['G1'];
-                            if (g1Cell && g1Cell.v) {
-                                const g1Value = g1Cell.v.toString();
-                                const yearMatch = g1Value.match(/(\d{4})/);
+                            const o1Cell = firstSheet['O1'];
+                            if (o1Cell && o1Cell.v) {
+                                const o1Value = o1Cell.v.toString();
+                                const yearMatch = o1Value.match(/(\d{4})/);
                                 if (yearMatch) {
                                     detectedYear = yearMatch[1];
                                 }
